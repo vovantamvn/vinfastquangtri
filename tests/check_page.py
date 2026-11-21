@@ -257,8 +257,9 @@ class PageTests(unittest.TestCase):
         icons = self.doc.find_all("link", rel="icon")
         self.assertEqual(icons[0].attrs["href"], "assets/img/favicon.svg")
         fav = (ROOT / "assets/img/favicon.svg").read_text(encoding="utf-8")
-        self.assertIn('fill="#1464f4"', fav)  # VinFast blue tile
-        self.assertGreaterEqual(fav.count("<path"), 2)  # V emblem strokes
+        self.assertNotIn("#1464f4", fav)  # not a blue tile: the stacked logo on white
+        self.assertIn('fill="#ffffff"', fav)  # white backdrop so it shows on dark tab bars
+        self.assertGreaterEqual(fav.count("<path"), 9)  # V emblem + VINFAST wordmark
         apple = self.doc.find_all("link", rel="apple-touch-icon")
         self.assertEqual(len(apple), 1)
         self.assertTrue((ROOT / apple[0].attrs["href"]).is_file())

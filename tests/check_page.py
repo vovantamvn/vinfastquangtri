@@ -196,7 +196,9 @@ class PageTests(unittest.TestCase):
         self.assertEqual(len(self.doc.find_all("link", rel="icon")), 1)
 
     def test_og_tags(self):
-        self.assertIn("VinFast Quảng Trị", self.meta(property="og:title"))
+        title = self.meta(property="og:title")
+        self.assertTrue(title.startswith("Võ Đức Thành"), title)  # share preview must not read as official
+        self.assertIn("VinFast Quảng Trị", title)
         self.assertTrue(self.meta(property="og:description"))
         self.assertEqual(self.meta(property="og:url"), SITE)
         self.assertEqual(self.meta(property="og:image"), SITE + "assets/img/og.jpg")

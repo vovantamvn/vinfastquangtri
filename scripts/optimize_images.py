@@ -72,7 +72,13 @@ def find_source(stem):
 def load(stem, w, h, label, make_placeholder):
     src = find_source(stem)
     if src:
-        img = ImageOps.exif_transpose(Image.open(src)).convert("RGB")
+        img = ImageOps.exif_transpose(Image.open(src))
+        if img.mode in ("RGBA", "LA", "P"):  # flatten transparency onto the page's light background
+            img = img.convert("RGBA")
+            bg = Image.new("RGB", img.size, "#f2f6f5")
+            bg.paste(img, mask=img.getchannel("A"))
+            img = bg
+        img = img.convert("RGB")
         return ImageOps.fit(img, (w, h), Image.LANCZOS), str(src.name)
     if make_placeholder:
         return placeholder(w, h, label), "placeholder"
@@ -94,9 +100,12 @@ def main():
             (OUT / f"{stem}-{w}.webp").write_bytes(data)
             print(f"{stem}-{w}.webp  {len(data) // 1024} KB  ({origin})")
     (w, h), budget, label = OG
-    base, origin = load("og", w, h, label, make_ph)
-    if base is None:  # fall back to the hero photo for link previews
-        base, origin = load("hero", w, h, label, make_ph)
+    # real og photo, else real hero photo, else placeholder
+    base, origin = load("og", w, h, label, False)
+    if base is None:
+        base, origin = load("hero", w, h, label, False)
+    if base is None and make_ph:
+        base, origin = placeholder(w, h, label), "placeholder"
     if base is not None:
         data = encode(base, "JPEG", budget)
         (OUT / "og.jpg").write_bytes(data)

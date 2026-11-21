@@ -12,6 +12,11 @@ DISCLAIMER = (
     "Trang cá nhân của tư vấn bán hàng, không phải website chính thức của VinFast. "
     "Thông tin chi tiết tại vinfastauto.com."
 )
+MODELS = [
+    ("vf-2", "VF 2"), ("vf-3", "VF 3"), ("vf-5", "VF 5"), ("vf-6", "VF 6"), ("vf-7", "VF 7"),
+    ("vf-8", "VF 8"), ("vf-9", "VF 9"), ("vf-mpv-7", "VF MPV 7"), ("limo-green", "Limo Green"),
+]
+GROUPS = ["Xe gia đình & cá nhân", "Xe kinh doanh dịch vụ"]
 VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
 
 
@@ -117,6 +122,36 @@ class PageTests(unittest.TestCase):
         body = re.search(r"(?m)^body\s*\{([^}]*)\}", css)
         self.assertIsNotNone(body)
         self.assertIn("padding-bottom", body.group(1))
+
+
+    def models(self):
+        return [n for n in self.doc.find_all("article") if n.has_class("model")]
+
+    def test_model_ids_in_order(self):
+        self.assertEqual([m.attrs.get("id") for m in self.models()], [i for i, _ in MODELS])
+
+    def test_model_headings(self):
+        for m, (_, name) in zip(self.models(), MODELS):
+            h3 = m.find_all("h3")
+            self.assertEqual(len(h3), 1)
+            self.assertEqual(h3[0].text(), f"VinFast {name}")
+
+    def test_two_groups(self):
+        groups = [n for n in self.doc.iter() if n.has_class("model-group")]
+        self.assertEqual(len(groups), 2)
+        self.assertEqual([g.find_all("h2")[0].text() for g in groups], GROUPS)
+        service_ids = [m.attrs["id"] for m in groups[1].find_all("article")]
+        self.assertEqual(service_ids, ["limo-green"])
+
+    def test_each_card_has_specs_and_zalo(self):
+        for m in self.models():
+            specs = [u for u in m.find_all("ul") if u.has_class("specs")]
+            self.assertEqual(len(specs), 1, m.attrs["id"])
+            self.assertTrue(3 <= len(specs[0].find_all("li")) <= 4, m.attrs["id"])
+            self.assertEqual(len(m.find_all("a", href=ZALO)), 1, m.attrs["id"])
+
+    def test_no_prices(self):
+        self.assertIsNone(re.search(r"\d[\d.,]*\s*(triệu|tỷ|vnđ|đ\b)", self.body_text, re.I))
 
 
 if __name__ == "__main__":

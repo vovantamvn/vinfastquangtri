@@ -37,10 +37,21 @@ class OptimizeImagesTests(unittest.TestCase):
         self.assertGreater(r, 180)
         self.assertLess(g, 80)
 
-    def test_transparent_png_lands_on_light_background(self):
+    def test_transparent_png_lands_on_white_background(self):
         Image.new("RGBA", (1600, 1000), (0, 0, 0, 0)).save(opt.SRC / "vf-2.png")
         opt.main()
-        self.assertGreater(min(self.center("vf-2-800.webp")), 200)
+        self.assertGreater(min(self.center("vf-2-800.webp")), 245)
+
+    def test_transparent_cutout_is_fitted_not_cropped(self):
+        # wide 2:1 cutout with red "bumpers" at both ends: both must survive (no side crop)
+        img = Image.new("RGBA", (2000, 1000), (0, 0, 0, 0))
+        img.paste((220, 20, 20, 255), (0, 400, 60, 600))
+        img.paste((220, 20, 20, 255), (1940, 400, 2000, 600))
+        img.save(opt.SRC / "vf-5.png")
+        opt.main()
+        out = Image.open(opt.OUT / "vf-5-800.webp").convert("RGB")
+        reds = [x for x in range(out.width) if out.getpixel((x, out.height // 2))[1] < 100]
+        self.assertTrue(reds and reds[0] < 80 and reds[-1] > out.width - 80, reds[:3] + reds[-3:])
 
 
 if __name__ == "__main__":

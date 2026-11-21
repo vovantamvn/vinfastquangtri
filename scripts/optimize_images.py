@@ -73,11 +73,15 @@ def load(stem, w, h, label, make_placeholder):
     src = find_source(stem)
     if src:
         img = ImageOps.exif_transpose(Image.open(src))
-        if img.mode in ("RGBA", "LA", "P"):  # flatten transparency onto the page's light background
+        if img.mode in ("RGBA", "LA", "P"):
+            # Cut-out car render: put it on white and fit the whole car in the frame (no cropping),
+            # with a small margin so bumpers don't touch the card edge.
             img = img.convert("RGBA")
-            bg = Image.new("RGB", img.size, "#f2f6f5")
+            img = img.crop(img.getchannel("A").getbbox() or (0, 0, *img.size))
+            bg = Image.new("RGB", img.size, "#ffffff")
             bg.paste(img, mask=img.getchannel("A"))
-            img = bg
+            inner = (int(w * 0.92), int(h * 0.92))
+            return ImageOps.pad(ImageOps.contain(bg, inner, Image.LANCZOS), (w, h), color="#ffffff"), str(src.name)
         img = img.convert("RGB")
         return ImageOps.fit(img, (w, h), Image.LANCZOS), str(src.name)
     if make_placeholder:

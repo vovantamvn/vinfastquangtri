@@ -18,6 +18,7 @@ MODELS = [
     ("vf-2", "VF 2"), ("vf-3", "VF 3"), ("vf-5", "VF 5"), ("vf-6", "VF 6"), ("vf-7", "VF 7"),
     ("vf-8", "VF 8"), ("vf-9", "VF 9"), ("vf-mpv-7", "VF MPV 7"), ("limo-green", "Limo Green"),
 ]
+COMMONS_IMAGES = ["Ảnh đầu trang", "VF 8", "VF 9", "VF MPV 7", "Limo Green"]
 GROUPS = ["Xe gia đình & cá nhân", "Xe kinh doanh dịch vụ"]
 VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
 
@@ -237,7 +238,10 @@ class PageTests(unittest.TestCase):
         """Commons photos are CC BY / CC BY-SA: each needs author, license and source link."""
         footer = self.doc.find_all("footer")[0]
         credits = [li for li in footer.find_all("li") if li.find_all("a")]
-        self.assertEqual(len(credits), len(MODELS) + 1)  # 9 models + hero
+        # only images still sourced from Commons need credits; official VinFast renders don't
+        self.assertEqual(len(credits), len(COMMONS_IMAGES))
+        for label in COMMONS_IMAGES:
+            self.assertTrue(any(li.text().startswith(label + ":") for li in credits), label)
         for li in credits:
             links = [a.attrs.get("href", "") for a in li.find_all("a")]
             self.assertTrue(any(h.startswith("https://commons.wikimedia.org/wiki/File:") for h in links), li.text())

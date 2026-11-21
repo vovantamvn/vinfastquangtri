@@ -233,6 +233,17 @@ class PageTests(unittest.TestCase):
         scripts = [s.attrs.get("src") for s in self.doc.find_all("script") if s.attrs.get("src")]
         self.assertIn("assets/js/main.js", scripts)
 
+    def test_photo_credits(self):
+        """Commons photos are CC BY / CC BY-SA: each needs author, license and source link."""
+        footer = self.doc.find_all("footer")[0]
+        credits = [li for li in footer.find_all("li") if li.find_all("a")]
+        self.assertEqual(len(credits), len(MODELS) + 1)  # 9 models + hero
+        for li in credits:
+            links = [a.attrs.get("href", "") for a in li.find_all("a")]
+            self.assertTrue(any(h.startswith("https://commons.wikimedia.org/wiki/File:") for h in links), li.text())
+            self.assertTrue(any("creativecommons.org/licenses/" in h for h in links), li.text())
+            self.assertRegex(li.text(), r"CC BY(-SA)? 4\.0")
+
     def test_no_prices(self):
         self.assertIsNone(re.search(r"\d[\d.,]*\s*(triệu|tỷ|vnđ|đ\b)", self.body_text, re.I))
 

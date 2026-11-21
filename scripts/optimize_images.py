@@ -53,7 +53,7 @@ def placeholder(w, h, label):
 
 def encode(img, fmt, budget):
     """Encode, lowering quality until the file fits the byte budget."""
-    for q in range(82, 29, -6):
+    for q in range(82, 15, -6):
         buf = io.BytesIO()
         img.save(buf, fmt, quality=q, method=6) if fmt == "WEBP" else img.save(buf, fmt, quality=q, optimize=True, progressive=True)
         if buf.tell() <= budget:
@@ -97,6 +97,8 @@ def main():
         for w in widths:
             img = base.resize((w, w * ah // aw), Image.LANCZOS)
             data = encode(img, "WEBP", budget)
+            if len(data) > budget:
+                print(f"WARNING {stem}-{w}.webp is {len(data) // 1024} KB, over the {budget // 1024} KB budget")
             (OUT / f"{stem}-{w}.webp").write_bytes(data)
             print(f"{stem}-{w}.webp  {len(data) // 1024} KB  ({origin})")
     (w, h), budget, label = OG

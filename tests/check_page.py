@@ -10,10 +10,7 @@ PHONE = "0376793468"
 SITE = "https://vinfastquangtri.net/"
 TEL = f"tel:{PHONE}"
 ZALO = f"https://zalo.me/{PHONE}"
-DISCLAIMER = (
-    "Trang cá nhân của tư vấn bán hàng, không phải website chính thức của VinFast. "
-    "Thông tin chi tiết tại vinfastauto.com."
-)
+DISCLAIMER = "Trang cá nhân của tư vấn bán hàng, không phải website chính thức của VinFast."
 MODELS = [
     ("vf-2", "VF 2"), ("vf-3", "VF 3"), ("vf-5", "VF 5"), ("vf-6", "VF 6"), ("vf-7", "VF 7"),
     ("vf-8", "VF 8"), ("vf-9", "VF 9"), ("vf-mpv-7", "VF MPV 7"), ("limo-green", "Limo Green"),
@@ -116,6 +113,7 @@ class PageTests(unittest.TestCase):
         footer = self.doc.find_all("footer")
         self.assertEqual(len(footer), 1)
         self.assertIn(DISCLAIMER, footer[0].text())
+        self.assertNotIn("vinfastauto.com", footer[0].text())
 
     def test_body_has_bottom_padding_for_sticky_bar(self):
         css = (ROOT / "assets/css/style.css").read_text(encoding="utf-8")

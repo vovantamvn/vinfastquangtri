@@ -150,6 +150,36 @@ class PageTests(unittest.TestCase):
             self.assertTrue(3 <= len(specs[0].find_all("li")) <= 4, m.attrs["id"])
             self.assertEqual(len(m.find_all("a", href=ZALO)), 1, m.attrs["id"])
 
+    def img_urls(self):
+        for img in self.doc.find_all("img"):
+            yield img, img.attrs.get("src")
+            for part in (img.attrs.get("srcset") or "").split(","):
+                if part.strip():
+                    yield img, part.split()[0]
+
+    def test_images_exist_and_within_budget(self):
+        imgs = self.doc.find_all("img")
+        self.assertTrue(any(i.attrs.get("fetchpriority") == "high" for i in imgs), "no hero image")
+        for img, url in self.img_urls():
+            path = ROOT / url
+            self.assertTrue(path.is_file(), url)
+            budget = 150_000 if Path(url).name.startswith("hero") else 80_000
+            self.assertLessEqual(path.stat().st_size, budget, url)
+        for img in imgs:
+            self.assertIn("srcset", img.attrs, img.attrs.get("src"))
+            self.assertIn("sizes", img.attrs, img.attrs.get("src"))
+
+    def test_img_attrs(self):
+        imgs = self.doc.find_all("img")
+        hero = [i for i in imgs if i.attrs.get("fetchpriority") == "high"]
+        self.assertEqual(len(hero), 1)
+        self.assertNotIn("loading", hero[0].attrs)
+        for img in imgs:
+            for a in ("alt", "width", "height"):
+                self.assertTrue(img.attrs.get(a), f"{img.attrs.get('src')} missing {a}")
+            if img is not hero[0]:
+                self.assertEqual(img.attrs.get("loading"), "lazy", img.attrs.get("src"))
+
     def test_no_prices(self):
         self.assertIsNone(re.search(r"\d[\d.,]*\s*(triệu|tỷ|vnđ|đ\b)", self.body_text, re.I))
 

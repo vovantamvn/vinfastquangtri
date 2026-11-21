@@ -17,7 +17,7 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+html { scroll-behavior: smooth; scroll-padding-top: 84px; }
 
 body {
   margin: 0;
@@ -82,10 +82,10 @@ p { margin: 0 0 1em; }
   background: #fff;
   box-shadow: 0 1px 0 var(--line), 0 4px 16px rgba(15, 27, 51, .05);
 }
-.header-inner { display: flex; align-items: center; justify-content: space-between; min-height: 64px; gap: 16px; }
-.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--ink); line-height: 1.2; }
-.brand-logo { width: 40px; height: 40px; }
-.brand-text { display: flex; flex-direction: column; }
+.header-inner { display: flex; align-items: center; justify-content: space-between; min-height: 72px; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 14px; text-decoration: none; color: var(--ink); line-height: 1.2; }
+.brand-logo { width: 56px; height: 56px; flex: none; }
+.brand-text { display: flex; flex-direction: column; padding-left: 14px; border-left: 1px solid var(--line); }
 .brand-name { font-weight: 800; }
 .brand-role { font-size: .82rem; color: var(--muted); }
 .main-nav { display: none; gap: 28px; }

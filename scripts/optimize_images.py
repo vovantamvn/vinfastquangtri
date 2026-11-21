@@ -9,7 +9,7 @@ import io
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "assets" / "src"
@@ -61,6 +61,18 @@ def encode(img, fmt, budget):
     return buf.getvalue()
 
 
+def fit_on_white(img, w, h):
+    """Fit the whole image inside w x h on white with a small margin, never cropping it."""
+    inner = (int(w * 0.92), int(h * 0.92))
+    return ImageOps.pad(ImageOps.contain(img, inner, Image.LANCZOS), (w, h), color="#ffffff")
+
+
+def is_white_studio(img):
+    """True when all four corners are near-white, i.e. a render on a plain white backdrop."""
+    x, y = img.width - 1, img.height - 1
+    return all(min(img.getpixel(p)) >= 240 for p in ((0, 0), (x, 0), (0, y), (x, y)))
+
+
 def find_source(stem):
     for ext in EXTS:
         p = SRC / f"{stem}{ext}"
@@ -77,12 +89,15 @@ def load(stem, w, h, label, make_placeholder):
             # Cut-out car render: put it on white and fit the whole car in the frame (no cropping),
             # with a small margin so bumpers don't touch the card edge.
             img = img.convert("RGBA")
-            img = img.crop(img.getchannel("A").getbbox() or (0, 0, *img.size))
+            solid = img.getchannel("A").point(lambda a: 255 if a > 40 else 0)  # ignore faint shadow/haze
+            img = img.crop(solid.getbbox() or (0, 0, *img.size))
             bg = Image.new("RGB", img.size, "#ffffff")
             bg.paste(img, mask=img.getchannel("A"))
-            inner = (int(w * 0.92), int(h * 0.92))
-            return ImageOps.pad(ImageOps.contain(bg, inner, Image.LANCZOS), (w, h), color="#ffffff"), str(src.name)
+            return fit_on_white(bg, w, h), str(src.name)
         img = img.convert("RGB")
+        if is_white_studio(img):  # studio render on plain white: same treatment as a cut-out
+            content = ImageChops.difference(img, Image.new("RGB", img.size, "#ffffff")).convert("L").point(lambda v: 255 if v > 12 else 0)
+            return fit_on_white(img.crop(content.getbbox() or (0, 0, *img.size)), w, h), str(src.name)
         return ImageOps.fit(img, (w, h), Image.LANCZOS), str(src.name)
     if make_placeholder:
         return placeholder(w, h, label), "placeholder"

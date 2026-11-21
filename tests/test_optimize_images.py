@@ -54,5 +54,34 @@ class OptimizeImagesTests(unittest.TestCase):
         self.assertTrue(reds and reds[0] < 80 and reds[-1] > out.width - 80, reds[:3] + reds[-3:])
 
 
+    def test_cutout_with_faint_haze_is_trimmed_to_the_car(self):
+        # wide canvas, faint near-transparent haze everywhere, small opaque car in the middle
+        img = Image.new("RGBA", (2560, 1066), (0, 0, 0, 8))
+        img.paste((220, 20, 20, 255), (1000, 400, 1560, 700))
+        img.save(opt.SRC / "vf-8.png")
+        opt.main()
+        out = Image.open(opt.OUT / "vf-8-800.webp").convert("RGB")
+        reds = [x for x in range(out.width) if out.getpixel((x, out.height // 2))[1] < 100]
+        self.assertGreater(len(reds), out.width * 0.8)  # car fills the frame width
+
+    def test_white_background_render_is_fitted_not_cropped(self):
+        # 16:9 studio render on plain white with the car touching both side edges
+        img = Image.new("RGB", (1920, 1080), (255, 255, 255))
+        img.paste((220, 20, 20), (0, 500, 60, 700))
+        img.paste((220, 20, 20), (1860, 500, 1920, 700))
+        img.save(opt.SRC / "vf-6.jpg", quality=95)
+        opt.main()
+        out = Image.open(opt.OUT / "vf-6-800.webp").convert("RGB")
+        reds = [x for x in range(out.width) if out.getpixel((x, out.height // 2))[1] < 100]
+        self.assertTrue(reds and reds[0] < 80 and reds[-1] > out.width - 80, reds[:3] + reds[-3:])
+
+    def test_photo_with_scene_background_is_still_cropped_to_fill(self):
+        # a normal photo (non-white corners) keeps cover-crop: no white bars added
+        Image.new("RGB", (1920, 1080), (40, 60, 90)).save(opt.SRC / "vf-8.jpg", quality=95)
+        opt.main()
+        out = Image.open(opt.OUT / "vf-8-800.webp").convert("RGB")
+        self.assertLess(max(out.getpixel((2, 2))), 120)
+
+
 if __name__ == "__main__":
     unittest.main()

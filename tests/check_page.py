@@ -18,7 +18,7 @@ MODELS = [
     ("vf-2", "VF 2"), ("vf-3", "VF 3"), ("vf-5", "VF 5"), ("vf-6", "VF 6"), ("vf-7", "VF 7"),
     ("vf-8", "VF 8"), ("vf-9", "VF 9"), ("vf-mpv-7", "VF MPV 7"), ("limo-green", "Limo Green"),
 ]
-COMMONS_IMAGES = ["Ảnh đầu trang", "VF 8", "VF 9", "VF MPV 7", "Limo Green"]
+COMMONS_IMAGES = ["Ảnh đầu trang"]
 GROUPS = ["Xe gia đình & cá nhân", "Xe kinh doanh dịch vụ"]
 VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
 

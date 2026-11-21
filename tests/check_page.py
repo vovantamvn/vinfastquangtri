@@ -18,7 +18,7 @@ MODELS = [
     ("vf-2", "VF 2"), ("vf-3", "VF 3"), ("vf-5", "VF 5"), ("vf-6", "VF 6"), ("vf-7", "VF 7"),
     ("vf-8", "VF 8"), ("vf-9", "VF 9"), ("vf-mpv-7", "VF MPV 7"), ("limo-green", "Limo Green"),
 ]
-COMMONS_IMAGES = ["Ảnh đầu trang"]
+COMMONS_IMAGES = []
 GROUPS = ["Xe gia đình & cá nhân", "Xe kinh doanh dịch vụ"]
 VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
 
@@ -169,6 +169,8 @@ class PageTests(unittest.TestCase):
             budget = 150_000 if Path(url).name.startswith("hero") else 80_000
             self.assertLessEqual(path.stat().st_size, budget, url)
         for img in imgs:
+            if img.attrs.get("src", "").endswith(".svg"):
+                continue  # vector logo: one file serves every size
             self.assertIn("srcset", img.attrs, img.attrs.get("src"))
             self.assertIn("sizes", img.attrs, img.attrs.get("src"))
 
@@ -180,7 +182,7 @@ class PageTests(unittest.TestCase):
         for img in imgs:
             for a in ("alt", "width", "height"):
                 self.assertTrue(img.attrs.get(a), f"{img.attrs.get('src')} missing {a}")
-            if img is not hero[0]:
+            if img is not hero[0] and not img.attrs.get("src", "").endswith(".svg"):  # header logo loads eagerly
                 self.assertEqual(img.attrs.get("loading"), "lazy", img.attrs.get("src"))
 
     def meta(self, **attrs):
@@ -250,6 +252,43 @@ class PageTests(unittest.TestCase):
 
     def test_no_prices(self):
         self.assertIsNone(re.search(r"\d[\d.,]*\s*(triệu|tỷ|vnđ|đ\b)", self.body_text, re.I))
+
+    def test_favicon_is_vinfast_emblem(self):
+        icons = self.doc.find_all("link", rel="icon")
+        self.assertEqual(icons[0].attrs["href"], "assets/img/favicon.svg")
+        fav = (ROOT / "assets/img/favicon.svg").read_text(encoding="utf-8")
+        self.assertIn('fill="#1464f4"', fav)  # VinFast blue tile
+        self.assertGreaterEqual(fav.count("<path"), 2)  # V emblem strokes
+        apple = self.doc.find_all("link", rel="apple-touch-icon")
+        self.assertEqual(len(apple), 1)
+        self.assertTrue((ROOT / apple[0].attrs["href"]).is_file())
+
+    def test_header_shows_vinfast_logo(self):
+        header = self.doc.find_all("header")[0]
+        logos = [i for i in header.find_all("img") if i.attrs.get("src") == "assets/img/vinfast-logo.svg"]
+        self.assertEqual(len(logos), 1)
+        self.assertIn("VinFast", logos[0].attrs.get("alt", ""))
+        self.assertTrue((ROOT / "assets/img/vinfast-logo.svg").is_file())
+
+    def test_floating_contact_buttons(self):
+        floats = [n for n in self.doc.iter() if n.has_class("float-contact")]
+        self.assertEqual(len(floats), 1)
+        self.assertEqual(len(floats[0].find_all("a", href=TEL)), 1)
+        self.assertEqual(len(floats[0].find_all("a", href=ZALO)), 1)
+        for a in floats[0].find_all("a"):
+            self.assertTrue(a.attrs.get("aria-label"))  # icon-only buttons need a label
+
+    def test_each_model_has_slogan(self):
+        for m in self.models():
+            slogans = [p for p in m.find_all("p") if p.has_class("model-slogan")]
+            self.assertEqual(len(slogans), 1, m.attrs["id"])
+            self.assertTrue(slogans[0].text(), m.attrs["id"])
+
+    def test_why_items_have_icons(self):
+        items = [li for ul in self.doc.find_all("ul") if ul.has_class("why-list") for li in ul.find_all("li")]
+        self.assertEqual(len(items), 4)
+        for li in items:
+            self.assertEqual(len(li.find_all("svg")), 1)
 
 
 if __name__ == "__main__":

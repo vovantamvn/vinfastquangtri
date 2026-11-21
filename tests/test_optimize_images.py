@@ -64,6 +64,19 @@ class OptimizeImagesTests(unittest.TestCase):
         reds = [x for x in range(out.width) if out.getpixel((x, out.height // 2))[1] < 100]
         self.assertGreater(len(reds), out.width * 0.8)  # car fills the frame width
 
+    def test_hero_cutout_keeps_transparency(self):
+        # hero sits on a blue gradient, so a cut-out hero must stay transparent
+        img = Image.new("RGBA", (2000, 1000), (0, 0, 0, 0))
+        img.paste((250, 250, 250, 255), (500, 300, 1500, 700))
+        img.save(opt.SRC / "hero.webp")
+        opt.main()
+        out = Image.open(opt.OUT / "hero-800.webp")
+        self.assertEqual(out.mode, "RGBA")
+        self.assertEqual(out.getpixel((2, 2))[3], 0)
+        self.assertEqual(out.getpixel((out.width // 2, out.height // 2))[3], 255)
+        og = Image.open(opt.OUT / "og.jpg").convert("RGB")  # og is JPEG: flattened, not black
+        self.assertGreater(sum(og.getpixel((2, 2))), 150)
+
     def test_white_background_render_is_fitted_not_cropped(self):
         # 16:9 studio render on plain white with the car touching both side edges
         img = Image.new("RGB", (1920, 1080), (255, 255, 255))

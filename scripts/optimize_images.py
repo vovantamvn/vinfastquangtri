@@ -81,7 +81,7 @@ def find_source(stem):
     return None
 
 
-def load(stem, w, h, label, make_placeholder):
+def load(stem, w, h, label, make_placeholder, keep_alpha=False):
     src = find_source(stem)
     if src:
         img = ImageOps.exif_transpose(Image.open(src))
@@ -91,6 +91,11 @@ def load(stem, w, h, label, make_placeholder):
             img = img.convert("RGBA")
             solid = img.getchannel("A").point(lambda a: 255 if a > 40 else 0)  # ignore faint shadow/haze
             img = img.crop(solid.getbbox() or (0, 0, *img.size))
+            if keep_alpha:  # hero floats on the page's gradient: keep it transparent
+                car = ImageOps.contain(img, (int(w * 0.96), int(h * 0.96)), Image.LANCZOS)
+                canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+                canvas.paste(car, ((w - car.width) // 2, h - car.height - int(h * 0.02)))
+                return canvas, str(src.name)
             bg = Image.new("RGB", img.size, "#ffffff")
             bg.paste(img, mask=img.getchannel("A"))
             return fit_on_white(bg, w, h), str(src.name)
@@ -109,7 +114,7 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     for stem, ((aw, ah), widths, budget, label) in SPECS.items():
         big_w = max(widths)
-        base, origin = load(stem, big_w, big_w * ah // aw, label, make_ph)
+        base, origin = load(stem, big_w, big_w * ah // aw, label, make_ph, keep_alpha=(stem == "hero"))
         if base is None:
             print(f"skip {stem}: no source in assets/src/")
             continue

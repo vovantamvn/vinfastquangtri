@@ -1,4 +1,5 @@
 """Static checks for the landing page. Run: python3 -m unittest tests/check_page.py -v"""
+import json
 import re
 import unittest
 from html.parser import HTMLParser
@@ -6,6 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PHONE = "0376793468"
+SITE = "https://vinfastquangtri.net/"
 TEL = f"tel:{PHONE}"
 ZALO = f"https://zalo.me/{PHONE}"
 DISCLAIMER = (
@@ -179,6 +181,55 @@ class PageTests(unittest.TestCase):
                 self.assertTrue(img.attrs.get(a), f"{img.attrs.get('src')} missing {a}")
             if img is not hero[0]:
                 self.assertEqual(img.attrs.get("loading"), "lazy", img.attrs.get("src"))
+
+    def meta(self, **attrs):
+        found = self.doc.find_all("meta", **attrs)
+        self.assertEqual(len(found), 1, attrs)
+        return found[0].attrs.get("content", "")
+
+    def test_meta(self):
+        self.assertIn("VinFast Quảng Trị", self.doc.find_all("title")[0].text())
+        self.assertTrue(120 <= len(self.meta(name="description")) <= 160)
+        canon = self.doc.find_all("link", rel="canonical")
+        self.assertEqual([c.attrs["href"] for c in canon], [SITE])
+        self.assertTrue(self.meta(name="viewport"))
+        self.assertEqual(len(self.doc.find_all("link", rel="icon")), 1)
+
+    def test_og_tags(self):
+        self.assertIn("VinFast Quảng Trị", self.meta(property="og:title"))
+        self.assertTrue(self.meta(property="og:description"))
+        self.assertEqual(self.meta(property="og:url"), SITE)
+        self.assertEqual(self.meta(property="og:image"), SITE + "assets/img/og.jpg")
+        self.assertTrue((ROOT / "assets/img/og.jpg").is_file())
+        self.assertEqual(self.meta(property="og:locale"), "vi_VN")
+
+    def test_jsonld(self):
+        blocks = [json.loads(s.text()) for s in self.doc.find_all("script", type="application/ld+json")]
+        by_type = {b["@type"]: b for b in blocks}
+        person = by_type["Person"]
+        self.assertEqual(person["name"], "Võ Đức Thành")
+        self.assertEqual(person["telephone"], "+84376793468")
+        self.assertTrue(person["areaServed"])
+        items = by_type["ItemList"]["itemListElement"]
+        self.assertEqual([i["name"] for i in items], [f"VinFast {n}" for _, n in MODELS])
+        self.assertEqual([i["url"] for i in items], [f"{SITE}#{i}" for i, _ in MODELS])
+
+    def test_seo_files(self):
+        robots = (ROOT / "robots.txt").read_text(encoding="utf-8")
+        self.assertIn(f"Sitemap: {SITE}sitemap.xml", robots)
+        locs = re.findall(r"<loc>(.*?)</loc>", (ROOT / "sitemap.xml").read_text(encoding="utf-8"))
+        self.assertEqual(locs, [SITE])
+        nf = load("404.html")
+        self.assertTrue(nf.find_all("a", href=TEL) and nf.find_all("a", href=ZALO))
+        self.assertEqual(nf.find_all("html")[0].attrs.get("lang"), "vi")
+        self.assertTrue((ROOT / "assets/img/favicon.svg").is_file())
+
+    def test_tracking_attrs(self):
+        for href, kind in ((TEL, "call"), (ZALO, "zalo")):
+            for a in self.doc.find_all("a", href=href):
+                self.assertEqual(a.attrs.get("data-track"), kind)
+        scripts = [s.attrs.get("src") for s in self.doc.find_all("script") if s.attrs.get("src")]
+        self.assertIn("assets/js/main.js", scripts)
 
     def test_no_prices(self):
         self.assertIsNone(re.search(r"\d[\d.,]*\s*(triệu|tỷ|vnđ|đ\b)", self.body_text, re.I))
